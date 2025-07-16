@@ -210,19 +210,14 @@ class MainWindow(QMainWindow):
             if len(s.history) == 0:
                 return
                 
-            # Create line data with some variation for visibility
+            # Create line data based on rolling window success rate
             y_data = []
             for i in range(len(s.history)):
-                window_size = min(10, i + 1)
+                window_size = min(60, i + 1)  # Use 60-second rolling window
                 start_idx = max(0, i - window_size + 1)
                 window_data = list(s.history)[start_idx:i+1]
                 successful_in_window = sum(window_data)
                 percentage = (successful_in_window / window_size) * 100.0
-                
-                # Add some variation for visibility
-                import random
-                percentage += random.uniform(-5, 5)
-                percentage = max(0, min(100, percentage))
                 
                 y_data.append(percentage)
             
