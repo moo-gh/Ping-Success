@@ -7,4 +7,4 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # 3.  Launch
-python main.py
+python main_matplotlib.py
