@@ -8,3 +8,6 @@ pip install -r requirements.txt
 
 # 3.  Launch
 python main_matplotlib.py
+
+## Screenshot
+![Application Screenshot](screen-01.png)
