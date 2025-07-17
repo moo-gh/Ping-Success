@@ -30,9 +30,6 @@ from PySide6.QtWidgets import (
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.style as mplstyle
-import numpy as np
-from scipy.interpolate import make_interp_spline
 
 # Use non-interactive backend
 plt.ioff()
@@ -107,19 +104,8 @@ class MatplotlibWidget(FigureCanvas):
 
     def update_line(self, x_data, y_data):
         """Update the line with new data"""
-        if len(x_data) < 3:
-            # Not enough points for smoothing
-            self.line.set_data(x_data, y_data)
-        else:
-            try:
-                # Create smooth curve using spline interpolation
-                x_smooth = np.linspace(min(x_data), max(x_data), len(x_data) * 3)
-                spl = make_interp_spline(x_data, y_data, k=min(3, len(x_data)-1))
-                y_smooth = spl(x_smooth)
-                self.line.set_data(x_smooth, y_smooth)
-            except:
-                # Fallback to original data if smoothing fails
-                self.line.set_data(x_data, y_data)
+        # Use original data points for consistent line width
+        self.line.set_data(x_data, y_data)
         
         # Adjust axis ranges
         if len(x_data) > 0:
@@ -148,7 +134,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title = QLabel("Ping success")
+        title = QLabel("Ping Success")
         title.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         layout.addWidget(title)
 
