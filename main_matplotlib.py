@@ -72,44 +72,63 @@ class PingWorker(QThread):
 
 class MatplotlibWidget(FigureCanvas):
     def __init__(self, parent=None):
-        # Create figure with dark background
-        self.figure = Figure(figsize=(8, 4), facecolor='#2a2a2a')
+        # Create figure with dark background and no patch
+        self.figure = Figure(figsize=(8, 5), facecolor='#2a2a2a')
+        self.figure.patch.set_visible(False)
         super().__init__(self.figure)
         self.setParent(parent)
         
-        # Create subplot
-        self.ax = self.figure.add_subplot(111, facecolor='#2a2a2a')
+        # Create subplot with proper margins for labels and no frame
+        self.ax = self.figure.add_axes([0.18, 0.15, 0.80, 0.75], facecolor='#2a2a2a')
+        self.ax.patch.set_visible(False)
         self.ax.set_ylim(0, 100)
-        self.ax.set_xlim(0, 100)
+        self.ax.set_xlim(0, 15)
         
         # Style the plot
         self.ax.grid(True, alpha=0.3, color='white')
-        self.ax.tick_params(colors='white')
+        self.ax.tick_params(colors='white', labelsize=9, 
+                           top=False, right=False, left=True, bottom=True,
+                           length=0, width=0)
         
-        # Remove frame/box borders for cleaner look
-        for spine in self.ax.spines.values():
-            spine.set_visible(False)
+        # Completely remove all borders and spines with multiple methods
+        self.ax.set_frame_on(False)
+        for key in ['top', 'right', 'bottom', 'left']:
+            if key in self.ax.spines:
+                self.ax.spines[key].set_visible(False)
+                self.ax.spines[key].set_color('none')
+                self.ax.spines[key].set_linewidth(0)
+                self.ax.spines[key].set_alpha(0)
         
-        # Hide axis labels
-        self.ax.set_xticks([])
-        self.ax.set_yticks([])
+        # Set up axis labels with smaller font and better spacing
+        self.ax.set_xticks([0, 5, 10, 15])
+        self.ax.set_xticklabels(['0m', '5m', '10m', '15m'], color='white', fontsize=8)
+        self.ax.set_yticks([0, 25, 50, 75, 100])
+        self.ax.set_yticklabels(['0%', '25%', '50%', '75%', '100%'], color='white', fontsize=8)
+        
+        # Add axis labels with smaller font
+        self.ax.set_xlabel('Time (minutes)', color='white', fontsize=9)
+        self.ax.set_ylabel('Success Rate (%)', color='white', fontsize=9)
+        
+        # Force remove any remaining borders by setting canvas properties
+        self.setStyleSheet("border: none; background-color: #2a2a2a;")
         
         # Initialize line
         self.line, = self.ax.plot([], [], color='white', linewidth=2)
-        
-        # Tight layout
-        self.figure.tight_layout()
         
         print("Matplotlib widget created with white line")
 
     def update_line(self, x_data, y_data):
         """Update the line with new data"""
-        # Use original data points for consistent line width
-        self.line.set_data(x_data, y_data)
-        
-        # Adjust axis ranges
+        # Convert data points to time scale (15 minutes = 900 seconds)
         if len(x_data) > 0:
-            self.ax.set_xlim(0, max(100, len(x_data) + 10))
+            # Scale x_data to represent time in minutes (0 to 15 minutes)
+            time_scale = [i * PING_INTERVAL / 60.0 for i in x_data]  # Convert to minutes
+            self.line.set_data(time_scale, y_data)
+            
+            # Set x-axis to show 0-15 minutes
+            self.ax.set_xlim(0, 15)
+        else:
+            self.line.set_data([], [])
         
         self.draw()
         print(f"Matplotlib line updated with {len(x_data)} points")
@@ -126,7 +145,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Ping Success Monitor")
-        self.resize(400, 300)
+        self.setFixedSize(500, 400)
 
         central = QWidget(self)
         self.setCentralWidget(central)
@@ -199,7 +218,7 @@ class MainWindow(QMainWindow):
             # Create line data based on rolling window success rate
             y_data = []
             for i in range(len(s.history)):
-                window_size = min(60, i + 1)  # Use 60-second rolling window
+                window_size = min(HISTORY_SECONDS, i + 1)  # Use 15-minute rolling window
                 start_idx = max(0, i - window_size + 1)
                 window_data = list(s.history)[start_idx:i+1]
                 successful_in_window = sum(window_data)
