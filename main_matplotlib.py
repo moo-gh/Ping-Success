@@ -63,7 +63,12 @@ class PingWorker(QThread):
             success = 1 if success_count == PACKETS_PER_INTERVAL else 0
             
             timestamp = datetime.now().strftime("%H:%M:%S")
-            print(f"[{timestamp}] Ping {self.host}: {'SUCCESS' if success else 'FAILURE'}")
+            status = "SUCCESS" if success else "FAILURE"
+            if success:
+                print(f"[{timestamp}] Ping {self.host}: {status}")
+            else:
+                # Red background for FAILURE messages
+                print(f"\033[41m[{timestamp}] Ping {self.host}: {status}\033[0m")
             self.sample_ready.emit(success)
             self._stop.wait(PING_INTERVAL)
 
