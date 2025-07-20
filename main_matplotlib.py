@@ -14,6 +14,7 @@ import sys
 import threading
 from collections import deque
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Deque, List
 
 from pythonping import ping  # type: ignore
@@ -61,7 +62,8 @@ class PingWorker(QThread):
             # Send 1 if all pings successful, 0 otherwise
             success = 1 if success_count == PACKETS_PER_INTERVAL else 0
             
-            print(f"Ping {self.host}: {'SUCCESS' if success else 'FAILURE'}")
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            print(f"[{timestamp}] Ping {self.host}: {'SUCCESS' if success else 'FAILURE'}")
             self.sample_ready.emit(success)
             self._stop.wait(PING_INTERVAL)
 
@@ -115,7 +117,8 @@ class MatplotlibWidget(FigureCanvas):
         # Initialize line
         self.line, = self.ax.plot([], [], color='white', linewidth=2)
         
-        print("Matplotlib widget created with white line")
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] Matplotlib widget created with white line")
 
     def update_line(self, x_data, y_data):
         """Update the line with new data"""
@@ -131,7 +134,8 @@ class MatplotlibWidget(FigureCanvas):
             self.line.set_data([], [])
         
         self.draw()
-        print(f"Matplotlib line updated with {len(x_data)} points")
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        # print(f"[{timestamp}] Matplotlib line updated with {len(x_data)} points")
 
 
 @dataclass
@@ -199,7 +203,8 @@ class MainWindow(QMainWindow):
         worker.start()
 
         self.series.append(TargetSeries(host, history, worker))
-        print(f"Added ping series for {host}")
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] Added ping series for {host}")
 
     def _on_sample(self, history: Deque[int], success: int):
         history.append(success)
