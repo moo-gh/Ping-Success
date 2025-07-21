@@ -11,3 +11,4 @@ python main_matplotlib.py
 
 ## Screenshot
 ![Application Screenshot](screen-01.png)
+![Terminal Screenshot](screen-02.png)
