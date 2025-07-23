@@ -155,7 +155,7 @@ class MatplotlibWidget(FigureCanvas):
         """)
         
         # Initialize line with gradient effect
-        self.line, = self.ax.plot([], [], color='#00ff88', linewidth=3, alpha=0.8)
+        self.line, = self.ax.plot([], [], color='#00ff88', linewidth=1.5, alpha=0.8)
         
         timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] Matplotlib widget created with modern styling")
