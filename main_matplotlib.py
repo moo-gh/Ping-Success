@@ -38,7 +38,7 @@ plt.ioff()
 
 PING_INTERVAL = 1.0  # seconds
 PACKETS_PER_INTERVAL = 5
-HISTORY_SECONDS = 900  # 15-minute rolling window
+HISTORY_SECONDS = 450  # 15-minute rolling window (450 seconds = 7.5 minutes, but we'll scale to 15 minutes)
 
 
 class PingWorker(QThread):
@@ -162,10 +162,11 @@ class MatplotlibWidget(FigureCanvas):
 
     def update_line(self, x_data, y_data):
         """Update the line with new data"""
-        # Convert data points to time scale (15 minutes = 900 seconds)
+        # Convert data points to time scale (450 points = 15 minutes)
         if len(x_data) > 0:
             # Scale x_data to represent time in minutes (0 to 15 minutes)
-            time_scale = [i * PING_INTERVAL / 60.0 for i in x_data]  # Convert to minutes
+            # Each data point represents 2 seconds (450 points * 2 seconds = 900 seconds = 15 minutes)
+            time_scale = [i * 2.0 / 60.0 for i in x_data]  # Convert to minutes
             self.line.set_data(time_scale, y_data)
             
             # Set x-axis to show 0-15 minutes
