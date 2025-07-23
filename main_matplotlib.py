@@ -18,14 +18,15 @@ from datetime import datetime
 from typing import Deque, List
 
 from pythonping import ping  # type: ignore
-from PySide6.QtCore import QThread, Qt, QTimer, Signal
-from PySide6.QtGui import QPalette, QColor
+from PySide6.QtCore import QThread, Qt, QTimer, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QPalette, QColor, QFont, QLinearGradient, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QVBoxLayout,
     QWidget,
     QLabel,
+    QFrame,
 )
 
 import matplotlib.pyplot as plt
@@ -37,7 +38,7 @@ plt.ioff()
 
 PING_INTERVAL = 1.0  # seconds
 PACKETS_PER_INTERVAL = 5
-HISTORY_SECONDS = 900  # 15-minute rolling window
+HISTORY_SECONDS = 450  # 15-minute rolling window (450 seconds = 7.5 minutes, but we'll scale to 15 minutes)
 
 
 class PingWorker(QThread):
@@ -77,60 +78,95 @@ class PingWorker(QThread):
         self.wait()
 
 
+class GradientFrame(QFrame):
+    """Custom frame with gradient background"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("gradientFrame")
+        self.setStyleSheet("""
+            QFrame#gradientFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
+                border-radius: 15px;
+                border: 2px solid #4a90e2;
+            }
+        """)
+
+
+class StatusCard(QFrame):
+    """Beautiful status card with gradient and shadow effect"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("statusCard")
+        self.setStyleSheet("""
+            QFrame#statusCard {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #2c3e50, stop:0.5 #34495e, stop:1 #2c3e50);
+                border-radius: 12px;
+                border: 1px solid #3498db;
+                padding: 15px;
+            }
+        """)
+        self.setMinimumHeight(80)
+
+
 class MatplotlibWidget(FigureCanvas):
     def __init__(self, parent=None):
-        # Create figure with dark background and no patch
-        self.figure = Figure(figsize=(8, 5), facecolor='#2a2a2a')
+        # Create figure with modern dark background
+        self.figure = Figure(figsize=(9, 5), facecolor='#1a1a2e')
         self.figure.patch.set_visible(False)
         super().__init__(self.figure)
         self.setParent(parent)
         
         # Create subplot with proper margins for labels and no frame
-        self.ax = self.figure.add_axes([0.18, 0.15, 0.80, 0.75], facecolor='#2a2a2a')
+        self.ax = self.figure.add_axes([0.22, 0.15, 0.72, 0.75], facecolor='#1a1a2e')
         self.ax.patch.set_visible(False)
         self.ax.set_ylim(0, 100)
         self.ax.set_xlim(0, 15)
         
-        # Style the plot
-        self.ax.grid(True, alpha=0.3, color='white')
-        self.ax.tick_params(colors='white', labelsize=9, 
+        # Enhanced styling with modern colors
+        self.ax.grid(True, alpha=0.2, color='#3498db', linestyle='--', linewidth=0.5)
+        self.ax.tick_params(colors='#ecf0f1', labelsize=10, 
                            top=False, right=False, left=True, bottom=True,
-                           length=0, width=0)
+                           length=0, width=0, pad=8)
         
-        # Completely remove all borders and spines with multiple methods
+        # Remove borders and spines
         self.ax.set_frame_on(False)
         for key in ['top', 'right', 'bottom', 'left']:
             if key in self.ax.spines:
                 self.ax.spines[key].set_visible(False)
-                self.ax.spines[key].set_color('none')
-                self.ax.spines[key].set_linewidth(0)
-                self.ax.spines[key].set_alpha(0)
         
-        # Set up axis labels with smaller font and better spacing
+        # Enhanced axis labels with better typography
         self.ax.set_xticks([0, 5, 10, 15])
-        self.ax.set_xticklabels(['0m', '5m', '10m', '15m'], color='white', fontsize=8)
+        self.ax.set_xticklabels(['0m', '5m', '10m', '15m'], color='#ecf0f1', fontsize=9, weight='bold')
         self.ax.set_yticks([0, 25, 50, 75, 100])
-        self.ax.set_yticklabels(['0%', '25%', '50%', '75%', '100%'], color='white', fontsize=8)
+        self.ax.set_yticklabels(['0%', '25%', '50%', '75%', '100%'], color='#ecf0f1', fontsize=9, weight='bold')
         
-        # Add axis labels with smaller font
-        self.ax.set_xlabel('Time (minutes)', color='white', fontsize=9)
-        self.ax.set_ylabel('Success Rate (%)', color='white', fontsize=9)
+        # Enhanced axis labels
+        self.ax.set_xlabel('Time (minutes)', color='#3498db', fontsize=11, weight='bold')
+        self.ax.set_ylabel('Success Rate (%)', color='#3498db', fontsize=11, weight='bold')
         
-        # Force remove any remaining borders by setting canvas properties
-        self.setStyleSheet("border: none; background-color: #2a2a2a;")
+        # Modern styling for the canvas
+        self.setStyleSheet("""
+            border: none; 
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
+            border-radius: 10px;
+        """)
         
-        # Initialize line
-        self.line, = self.ax.plot([], [], color='white', linewidth=2)
+        # Initialize line with gradient effect
+        self.line, = self.ax.plot([], [], color='#00ff88', linewidth=1.5, alpha=0.8)
         
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] Matplotlib widget created with white line")
+        print(f"[{timestamp}] Matplotlib widget created with modern styling")
 
     def update_line(self, x_data, y_data):
         """Update the line with new data"""
-        # Convert data points to time scale (15 minutes = 900 seconds)
+        # Convert data points to time scale (450 points = 15 minutes)
         if len(x_data) > 0:
             # Scale x_data to represent time in minutes (0 to 15 minutes)
-            time_scale = [i * PING_INTERVAL / 60.0 for i in x_data]  # Convert to minutes
+            # Each data point represents 2 seconds (450 points * 2 seconds = 900 seconds = 15 minutes)
+            time_scale = [i * 2.0 / 60.0 for i in x_data]  # Convert to minutes
             self.line.set_data(time_scale, y_data)
             
             # Set x-axis to show 0-15 minutes
@@ -154,31 +190,120 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Ping Success Monitor")
-        self.setFixedSize(500, 400)
+        self.setFixedSize(700, 500)
+        self.setWindowFlags(Qt.Window | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint)
+
+        # Set window icon and properties
+        # Skip icon for now to avoid compatibility issues
+        pass
 
         central = QWidget(self)
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(25, 25, 25, 25)
+        layout.setSpacing(20)
 
-        # Title
-        title = QLabel("Ping Success")
-        title.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
-        layout.addWidget(title)
+        # Main gradient frame
+        main_frame = GradientFrame()
+        main_layout = QVBoxLayout(main_frame)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setSpacing(20)
 
-        # Matplotlib widget
+        # Enhanced title with modern typography
+        title_frame = QFrame()
+        title_layout = QVBoxLayout(title_frame)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        title_layout.setSpacing(5)
+
+        title = QLabel("Ping Success Monitor")
+        title.setStyleSheet("""
+            color: #ecf0f1; 
+            font-size: 24px; 
+            font-weight: bold; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+        """)
+        title.setAlignment(Qt.AlignCenter)
+
+        subtitle = QLabel("Real-time Network Connectivity")
+        subtitle.setStyleSheet("""
+            color: #3498db; 
+            font-size: 14px; 
+            font-weight: normal; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+        """)
+        subtitle.setAlignment(Qt.AlignCenter)
+
+        title_layout.addWidget(title)
+        title_layout.addWidget(subtitle)
+        main_layout.addWidget(title_frame)
+
+        # Matplotlib widget in a styled container
+        plot_container = QFrame()
+        plot_container.setObjectName("plotContainer")
+        plot_container.setStyleSheet("""
+            QFrame#plotContainer {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
+                border-radius: 15px;
+                border: 2px solid #3498db;
+                padding: 10px;
+            }
+        """)
+        plot_layout = QVBoxLayout(plot_container)
+        plot_layout.setContentsMargins(10, 10, 10, 10)
+
         self.plot_widget = MatplotlibWidget()
-        layout.addWidget(self.plot_widget)
+        plot_layout.addWidget(self.plot_widget)
+        main_layout.addWidget(plot_container)
 
-        # Success percentage display
+        # Enhanced status display with modern card design
+        status_card = StatusCard()
+        status_layout = QVBoxLayout(status_card)
+        status_layout.setContentsMargins(20, 20, 20, 20)
+        status_layout.setSpacing(10)
+
+        # Success percentage with enhanced styling
+        percentage_container = QFrame()
+        percentage_container.setObjectName("percentageContainer")
+        percentage_container.setStyleSheet("""
+            QFrame#percentageContainer {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #27ae60, stop:0.5 #2ecc71, stop:1 #27ae60);
+                border-radius: 10px;
+                border: 2px solid #00ff88;
+            }
+        """)
+        percentage_layout = QVBoxLayout(percentage_container)
+        percentage_layout.setContentsMargins(15, 10, 15, 10)
+
         self.percentage_label = QLabel("0.0%")
-        self.percentage_label.setStyleSheet("color: white; font-size: 24px; font-weight: bold;")
-        layout.addWidget(self.percentage_label)
+        self.percentage_label.setStyleSheet("""
+            color: white; 
+            font-size: 32px; 
+            font-weight: bold; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+        """)
+        self.percentage_label.setAlignment(Qt.AlignCenter)
+        percentage_layout.addWidget(self.percentage_label)
+        status_layout.addWidget(percentage_container)
         
-        # Time frame label
-        time_label = QLabel("last 15 minutes")
-        time_label.setStyleSheet("color: white; font-size: 12px;")
-        layout.addWidget(time_label)
+        # Time frame label with enhanced styling
+        time_label = QLabel("Last 15 Minutes")
+        time_label.setStyleSheet("""
+            color: #bdc3c7; 
+            font-size: 14px; 
+            font-weight: normal; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            text-align: center;
+        """)
+        time_label.setAlignment(Qt.AlignCenter)
+        status_layout.addWidget(time_label)
+
+        main_layout.addWidget(status_card)
+        layout.addWidget(main_frame)
 
         # Internal storage
         self.series: List[TargetSeries] = []
@@ -250,21 +375,25 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    # Dark theme
+    # Enhanced dark theme with modern colors
     palette = QPalette()
-    palette.setColor(QPalette.Window, QColor("#2a2a2a"))
-    palette.setColor(QPalette.WindowText, Qt.white)
-    palette.setColor(QPalette.Base, QColor("#2a2a2a"))
-    palette.setColor(QPalette.AlternateBase, QColor("#2a2a2a"))
-    palette.setColor(QPalette.ToolTipBase, QColor("#2a2a2a"))
-    palette.setColor(QPalette.ToolTipText, Qt.white)
-    palette.setColor(QPalette.Text, Qt.white)
-    palette.setColor(QPalette.Button, QColor("#2a2a2a"))
-    palette.setColor(QPalette.ButtonText, Qt.white)
-    palette.setColor(QPalette.BrightText, Qt.white)
-    palette.setColor(QPalette.Link, QColor("#42a5f5"))
-    palette.setColor(QPalette.Highlight, QColor("#42a5f5"))
+    palette.setColor(QPalette.Window, QColor("#1a1a2e"))
+    palette.setColor(QPalette.WindowText, QColor("#ecf0f1"))
+    palette.setColor(QPalette.Base, QColor("#16213e"))
+    palette.setColor(QPalette.AlternateBase, QColor("#0f3460"))
+    palette.setColor(QPalette.ToolTipBase, QColor("#2c3e50"))
+    palette.setColor(QPalette.ToolTipText, QColor("#ecf0f1"))
+    palette.setColor(QPalette.Text, QColor("#ecf0f1"))
+    palette.setColor(QPalette.Button, QColor("#34495e"))
+    palette.setColor(QPalette.ButtonText, QColor("#ecf0f1"))
+    palette.setColor(QPalette.BrightText, QColor("#00ff88"))
+    palette.setColor(QPalette.Link, QColor("#3498db"))
+    palette.setColor(QPalette.Highlight, QColor("#3498db"))
     app.setPalette(palette)
+
+    # Set application-wide font
+    font = QFont("Segoe UI", 9)
+    app.setFont(font)
 
     win = MainWindow()
     win.show()

@@ -10,5 +10,5 @@ pip install -r requirements.txt
 python main_matplotlib.py
 
 ## Screenshot
-![Application Screenshot](screen-01.png)
+![Application Screenshot](screen-03.png)
 ![Terminal Screenshot](screen-02.png)
