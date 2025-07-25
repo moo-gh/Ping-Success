@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import Deque, List
 
 from pythonping import ping
+from PySide6.QtGui import QPalette, QColor, QFont
 from PySide6.QtCore import QThread, Qt, QTimer, Signal
-from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.font_manager as fm
 
 # Use non-interactive backend
 plt.ioff()
