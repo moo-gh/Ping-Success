@@ -10,5 +10,5 @@ pip install -r requirements.txt
 python main_matplotlib.py
 
 ## Screenshot
-![Application Screenshot](screen-03.png)
+<img src="screen-03.png" alt="Application Screenshot" width="300"/>
 ![Terminal Screenshot](screen-02.png)
