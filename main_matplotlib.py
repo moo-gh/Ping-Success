@@ -32,9 +32,21 @@ from PySide6.QtWidgets import (
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.font_manager as fm
 
 # Use non-interactive backend
 plt.ioff()
+
+# Configure better fonts for matplotlib
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Segoe UI', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif']
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.titlesize'] = 12
+plt.rcParams['axes.labelsize'] = 11
+plt.rcParams['xtick.labelsize'] = 9
+plt.rcParams['ytick.labelsize'] = 9
+plt.rcParams['legend.fontsize'] = 10
+plt.rcParams['figure.titlesize'] = 14
 
 PING_INTERVAL = 1.0  # seconds
 PACKETS_PER_INTERVAL = 5
@@ -138,13 +150,13 @@ class MatplotlibWidget(FigureCanvas):
         
         # Enhanced axis labels with better typography
         self.ax.set_xticks([0, 5, 10, 15])
-        self.ax.set_xticklabels(['0m', '5m', '10m', '15m'], color='#ecf0f1', fontsize=9, weight='bold')
+        self.ax.set_xticklabels(['0m', '5m', '10m', '15m'], color='#ecf0f1', fontsize=10, weight='600', fontfamily='Segoe UI')
         self.ax.set_yticks([0, 25, 50, 75, 100])
-        self.ax.set_yticklabels(['0%', '25%', '50%', '75%', '100%'], color='#ecf0f1', fontsize=9, weight='bold')
+        self.ax.set_yticklabels(['0%', '25%', '50%', '75%', '100%'], color='#ecf0f1', fontsize=10, weight='600', fontfamily='Segoe UI')
         
         # Enhanced axis labels
-        self.ax.set_xlabel('Time (minutes)', color='#3498db', fontsize=11, weight='bold')
-        self.ax.set_ylabel('Success Rate (%)', color='#3498db', fontsize=11, weight='bold')
+        self.ax.set_xlabel('Time (minutes)', color='#3498db', fontsize=12, weight='600', fontfamily='Segoe UI')
+        self.ax.set_ylabel('Success Rate (%)', color='#3498db', fontsize=12, weight='600', fontfamily='Segoe UI')
         
         # Modern styling for the canvas
         self.setStyleSheet("""
@@ -218,20 +230,22 @@ class MainWindow(QMainWindow):
         title = QLabel("Ping Success Monitor")
         title.setStyleSheet("""
             color: #ecf0f1; 
-            font-size: 24px; 
-            font-weight: bold; 
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 26px; 
+            font-weight: 600; 
+            font-family: 'Segoe UI', 'Arial', sans-serif;
             text-align: center;
+            letter-spacing: 0.5px;
         """)
         title.setAlignment(Qt.AlignCenter)
 
         subtitle = QLabel("Real-time Network Connectivity")
         subtitle.setStyleSheet("""
             color: #3498db; 
-            font-size: 14px; 
-            font-weight: normal; 
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 15px; 
+            font-weight: 400; 
+            font-family: 'Segoe UI', 'Arial', sans-serif;
             text-align: center;
+            letter-spacing: 0.3px;
         """)
         subtitle.setAlignment(Qt.AlignCenter)
 
@@ -281,10 +295,11 @@ class MainWindow(QMainWindow):
         self.percentage_label = QLabel("0.0%")
         self.percentage_label.setStyleSheet("""
             color: white; 
-            font-size: 32px; 
-            font-weight: bold; 
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 34px; 
+            font-weight: 600; 
+            font-family: 'Segoe UI', 'Arial', sans-serif;
             text-align: center;
+            letter-spacing: 1px;
         """)
         self.percentage_label.setAlignment(Qt.AlignCenter)
         percentage_layout.addWidget(self.percentage_label)
@@ -294,10 +309,11 @@ class MainWindow(QMainWindow):
         time_label = QLabel("Last 15 Minutes")
         time_label.setStyleSheet("""
             color: #bdc3c7; 
-            font-size: 14px; 
-            font-weight: normal; 
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 15px; 
+            font-weight: 400; 
+            font-family: 'Segoe UI', 'Arial', sans-serif;
             text-align: center;
+            letter-spacing: 0.2px;
         """)
         time_label.setAlignment(Qt.AlignCenter)
         status_layout.addWidget(time_label)
@@ -391,8 +407,9 @@ if __name__ == "__main__":
     palette.setColor(QPalette.Highlight, QColor("#3498db"))
     app.setPalette(palette)
 
-    # Set application-wide font
-    font = QFont("Segoe UI", 9)
+    # Set application-wide font with better typography
+    font = QFont("Segoe UI", 10)
+    font.setWeight(QFont.Weight.Normal)
     app.setFont(font)
 
     win = MainWindow()
