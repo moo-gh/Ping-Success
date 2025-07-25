@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QFrame,
+    QTextEdit,
+    QScrollArea,
 )
 
 import matplotlib.pyplot as plt
@@ -44,6 +46,7 @@ HISTORY_SECONDS = 450  # 15-minute rolling window (450 seconds = 7.5 minutes, bu
 
 class PingWorker(QThread):
     sample_ready = Signal(int)
+    log_message = Signal(str)
 
     def __init__(self, host: str):
         super().__init__()
@@ -66,11 +69,8 @@ class PingWorker(QThread):
             
             timestamp = datetime.now().strftime("%H:%M:%S")
             status = "SUCCESS" if success else "FAILURE"
-            if success:
-                print(f"[{timestamp}] Ping {self.host}: {status}")
-            else:
-                # Red background for FAILURE messages
-                print(f"\033[41m[{timestamp}] Ping {self.host}: {status}\033[0m")
+            message = f"[{timestamp}] Ping {self.host}: {status}"
+            self.log_message.emit(message)
             self.sample_ready.emit(success)
             self._stop.wait(PING_INTERVAL)
 
@@ -111,13 +111,99 @@ class StatusCard(QFrame):
         self.setMinimumHeight(80)
 
 
-class MatplotlibWidget(FigureCanvas):
+class ConsoleLogWidget(QFrame):
+    """Console log widget with scrolling and message limiting"""
     def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("consoleFrame")
+        self.setStyleSheet("""
+            QFrame#consoleFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
+                border-radius: 12px;
+                border: 2px solid #3498db;
+                padding: 10px;
+            }
+        """)
+        self.setMinimumHeight(150)
+        self.setMaximumHeight(150)
+        
+        # Layout for the console frame
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+        
+        # Console title
+        title = QLabel("Console Logs")
+        title.setStyleSheet("""
+            color: #3498db; 
+            font-size: 14px; 
+            font-weight: 600; 
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            margin-bottom: 5px;
+        """)
+        layout.addWidget(title)
+        
+        # Text edit for console output
+        self.console_text = QTextEdit()
+        self.console_text.setReadOnly(True)
+        self.console_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #0d1117;
+                color: #c9d1d9;
+                border: 1px solid #30363d;
+                border-radius: 8px;
+                padding: 8px;
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 11px;
+                line-height: 1.4;
+            }
+            QScrollBar:vertical {
+                background: #21262d;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #484f58;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #6e7681;
+            }
+        """)
+        layout.addWidget(self.console_text)
+        
+        # Message storage with 100 message limit
+        self.messages = deque(maxlen=100)
+        
+    def add_message(self, message: str):
+        """Add a message to the console log"""
+        # Format failure messages with red background
+        if "FAILURE" in message:
+            formatted_message = f'<span style="background-color: #dc3545; color: white; padding: 2px 4px; border-radius: 3px;">{message}</span>'
+        else:
+            formatted_message = message
+            
+        self.messages.append(formatted_message)
+        
+        # Update the display with HTML formatting
+        self.console_text.clear()
+        self.console_text.setHtml('<br>'.join(self.messages))
+        
+        # Auto-scroll to bottom
+        scrollbar = self.console_text.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+
+class MatplotlibWidget(FigureCanvas):
+    def __init__(self, parent=None, logger=None):
         # Create figure with modern dark background
         self.figure = Figure(figsize=(9, 5), facecolor='#1a1a2e')
         self.figure.patch.set_visible(False)
         super().__init__(self.figure)
         self.setParent(parent)
+        self.logger = logger if logger else print
         
         # Create subplot with proper margins for labels and no frame
         self.ax = self.figure.add_axes([0.22, 0.15, 0.72, 0.75], facecolor='#1a1a2e')
@@ -159,7 +245,7 @@ class MatplotlibWidget(FigureCanvas):
         self.line, = self.ax.plot([], [], color='#00ff88', linewidth=1.5, alpha=0.8, solid_joinstyle='round', solid_capstyle='round', antialiased=True)
         
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] Matplotlib widget created with modern styling")
+        self.logger(f"[{timestamp}] Matplotlib widget created with modern styling")
 
     def update_line(self, x_data, y_data):
         """Update the line with new data"""
@@ -177,7 +263,8 @@ class MatplotlibWidget(FigureCanvas):
         
         self.draw()
         timestamp = datetime.now().strftime("%H:%M:%S")
-        # print(f"[{timestamp}] Matplotlib line updated with {len(x_data)} points")
+        # Commented out to reduce log noise - uncomment if needed for debugging
+        # self.logger(f"[{timestamp}] Matplotlib line updated with {len(x_data)} points")
 
 
 @dataclass
@@ -191,7 +278,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Ping Success Monitor")
-        self.setFixedSize(700, 500)
+        self.setFixedSize(700, 700)  # Increased height to accommodate console
         self.setWindowFlags(Qt.Window | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint)
 
         # Set window icon and properties
@@ -257,7 +344,7 @@ class MainWindow(QMainWindow):
         plot_layout = QVBoxLayout(plot_container)
         plot_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.plot_widget = MatplotlibWidget()
+        self.plot_widget = MatplotlibWidget(logger=self.log_message)
         plot_layout.addWidget(self.plot_widget)
         main_layout.addWidget(plot_container)
 
@@ -308,6 +395,11 @@ class MainWindow(QMainWindow):
         status_layout.addWidget(time_label)
 
         main_layout.addWidget(status_card)
+
+        # Console log widget
+        self.console_widget = ConsoleLogWidget()
+        main_layout.addWidget(self.console_widget)
+        
         layout.addWidget(main_frame)
 
         # Internal storage
@@ -322,6 +414,18 @@ class MainWindow(QMainWindow):
         self.redraw_timer.timeout.connect(self._replot)
         self.redraw_timer.start(int(PING_INTERVAL * 1000))
 
+        # Initial console message
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_message(f"[{timestamp}] Ping Success Monitor started")
+        self.log_message(f"[{timestamp}] Monitoring interval: {PING_INTERVAL}s")
+        self.log_message(f"[{timestamp}] Console logs limited to 100 messages")
+
+    def log_message(self, message: str):
+        """Log a message to both console output and the console widget"""
+        print(message)
+        if hasattr(self, 'console_widget'):
+            self.console_widget.add_message(message)
+
     @staticmethod
     def _default_hosts() -> List[str]:
         """Return the fixed list of hosts we monitor."""
@@ -335,11 +439,12 @@ class MainWindow(QMainWindow):
 
         worker = PingWorker(host)
         worker.sample_ready.connect(lambda success, h=history: self._on_sample(h, success))
+        worker.log_message.connect(self.log_message)  # Connect the signal to the main window's log_message method
         worker.start()
 
         self.series.append(TargetSeries(host, history, worker))
         timestamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{timestamp}] Added ping series for {host}")
+        self.log_message(f"[{timestamp}] Added ping series for {host}")
 
     def _on_sample(self, history: Deque[int], success: int):
         history.append(success)
