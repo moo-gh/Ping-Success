@@ -1,13 +1,3 @@
-"""
-Ping Success Graph – Windows Desktop Application (PySide6 + Matplotlib)
-=====================================================================
-
-This version uses matplotlib instead of PyQtGraph for better compatibility
-and line rendering on Windows systems.
-
-Dependencies:   `pip install pyside6 matplotlib pythonping`
-Python >= 3.9.
-"""
 from __future__ import annotations
 
 import sys
@@ -17,9 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Deque, List
 
-from pythonping import ping  # type: ignore
-from PySide6.QtCore import QThread, Qt, QTimer, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QPalette, QColor, QFont, QLinearGradient, QPainter, QPen
+from pythonping import ping
+from PySide6.QtCore import QThread, Qt, QTimer, Signal
+from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -167,7 +157,7 @@ class MatplotlibWidget(FigureCanvas):
         """)
         
         # Initialize line with gradient effect
-        self.line, = self.ax.plot([], [], color='#00ff88', linewidth=1.5, alpha=0.8)
+        self.line, = self.ax.plot([], [], color='#00ff88', linewidth=1.5, alpha=0.8, solid_joinstyle='round', solid_capstyle='round', antialiased=True)
         
         timestamp = datetime.now().strftime("%H:%M:%S")
         print(f"[{timestamp}] Matplotlib widget created with modern styling")
