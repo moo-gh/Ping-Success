@@ -351,8 +351,8 @@ class MainWindow(QMainWindow):
         # Enhanced status display with modern card design
         status_card = StatusCard()
         status_layout = QVBoxLayout(status_card)
-        status_layout.setContentsMargins(20, 20, 20, 20)
-        status_layout.setSpacing(10)
+        status_layout.setContentsMargins(25, 5, 25, 25)
+        status_layout.setSpacing(5)
 
         # Success percentage with enhanced styling
         percentage_container = QFrame()
@@ -361,25 +361,34 @@ class MainWindow(QMainWindow):
             QFrame#percentageContainer {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 #27ae60, stop:0.5 #2ecc71, stop:1 #27ae60);
-                border-radius: 10px;
+                border-radius: 12px;
                 border: 2px solid #00ff88;
+                min-height: 70px;
+                max-width: 300px;
             }
         """)
         percentage_layout = QVBoxLayout(percentage_container)
-        percentage_layout.setContentsMargins(15, 10, 15, 10)
+        percentage_layout.setContentsMargins(20, 5, 20, 5)
 
         self.percentage_label = QLabel("0.0%")
+        self.percentage_label.setObjectName("percentageLabel")
         self.percentage_label.setStyleSheet("""
-            color: white; 
-            font-size: 34px; 
-            font-weight: 600; 
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            text-align: center;
-            letter-spacing: 1px;
+            QLabel#percentageLabel {
+                color: white; 
+                font-size: 24px; 
+                font-weight: 600; 
+                font-family: 'Segoe UI', 'Arial', sans-serif;
+                text-align: center;
+                letter-spacing: 1px;
+                background-color: transparent;
+            }
         """)
         self.percentage_label.setAlignment(Qt.AlignCenter)
+        self.percentage_label.setMinimumHeight(50)
         percentage_layout.addWidget(self.percentage_label)
-        status_layout.addWidget(percentage_container)
+        
+        # Center the percentage container within the status card
+        status_layout.addWidget(percentage_container, 0, Qt.AlignCenter)
         
         # Time frame label with enhanced styling
         time_label = QLabel("Last 15 Minutes")
@@ -419,6 +428,10 @@ class MainWindow(QMainWindow):
         self.log_message(f"[{timestamp}] Ping Success Monitor started")
         self.log_message(f"[{timestamp}] Monitoring interval: {PING_INTERVAL}s")
         self.log_message(f"[{timestamp}] Console logs limited to 100 messages")
+        
+        # Set initial percentage
+        self.percentage_label.setText("0.0%")
+        self.log_message(f"[{timestamp}] Initial percentage set to 0.0%")
 
     def log_message(self, message: str):
         """Log a message to both console output and the console widget"""
@@ -438,7 +451,8 @@ class MainWindow(QMainWindow):
         history: Deque[int] = deque([], maxlen=HISTORY_SECONDS)
 
         worker = PingWorker(host)
-        worker.sample_ready.connect(lambda success, h=history: self._on_sample(h, success))
+        # Use a more reliable signal connection
+        worker.sample_ready.connect(lambda success: self._on_sample(history, success))
         worker.log_message.connect(self.log_message)  # Connect the signal to the main window's log_message method
         worker.start()
 
@@ -449,11 +463,21 @@ class MainWindow(QMainWindow):
     def _on_sample(self, history: Deque[int], success: int):
         history.append(success)
         
-        # Calculate percentage: successful pings / total expected pings in 15 minutes
-        successful_pings = sum(history)
-        percentage = (successful_pings / HISTORY_SECONDS) * 100.0
+        # Calculate percentage: successful pings / total samples collected
+        if len(history) > 0:
+            successful_pings = sum(history)
+            percentage = (successful_pings / len(history)) * 100.0
+        else:
+            percentage = 0.0
+        
+        # Debug logging
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_message(f"[{timestamp}] Sample received: success={success}, history_size={len(history)}, percentage={percentage:.1f}%")
             
+        # Update the percentage label and force a repaint
         self.percentage_label.setText(f"{percentage:.1f}%")
+        self.percentage_label.repaint()
+        self.log_message(f"[{timestamp}] Updated percentage label to {percentage:.1f}%")
 
     def _replot(self):
         for s in self.series:
