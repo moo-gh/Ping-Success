@@ -10,8 +10,11 @@ Real‑time desktop app for visualizing network connectivity by plotting ping su
 
 <img src="screen-05.png" alt="Application Screenshot" width="600"/>
 
-<img src="screen-06.png" alt="System Tray Icon showing average percentage"/>
-<figcaption><em>Easily watchdog your internet quality in system tray.</em></figcaption>
+<figure>
+  <img src="screen-06.png" alt="System tray icon showing average percentage"/>
+  <figcaption><em>Easily watchdog your internet quality in system tray.</em></figcaption>
+  
+</figure>
 
 
 </div>
