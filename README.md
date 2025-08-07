@@ -65,9 +65,9 @@ Tray behavior:
 
 ## Tray icon
 <figure>
-  <img src="screen-06.png" alt="System Tray Icon showing average percentage" width="140"/>
+  <img src="screen-06.png" alt="System Tray Icon showing average percentage"/>
   <figcaption><em>Easily watchdog your internet quality.</em></figcaption>
-  
+
 </figure>
 
 ## Project Structure
