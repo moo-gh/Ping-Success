@@ -19,6 +19,7 @@ Real‑time desktop app for visualizing network connectivity by plotting ping su
 - **Live success rate**: Samples connectivity every second and shows a rolling success percentage.
 - **Beautiful dark UI**: Modern gradients, readable typography, and a clean chart.
 - **Compact console log**: See timestamped ping failures at a glance.
+- **System tray**: Minimize to tray with Show/Hide/Quit actions.
 - **Lightweight**: Single Python script; easy to run on Windows.
 
 ## Quickstart (Windows)
@@ -55,6 +56,19 @@ python main_matplotlib.py
   - A compact console listing recent failures
 
 To change the target host, edit the `_default_hosts()` method in `main_matplotlib.py`.
+
+Tray behavior:
+- Minimize sends the app to the system tray.
+- Close exits the app.
+- The tray tooltip and menu show the current average percentage.
+- Right‑click the tray icon for Show/Hide/Quit; double‑click toggles visibility.
+
+## Tray icon
+<figure>
+  <img src="screen-06.png" alt="System Tray Icon showing average percentage" width="140"/>
+  <figcaption><em>Easily watchdog your internet quality.</em></figcaption>
+  
+</figure>
 
 ## Project Structure
 
