@@ -8,8 +8,19 @@ from datetime import datetime
 from typing import Deque, List
 
 from pythonping import ping
-from PySide6.QtGui import QPalette, QColor, QFont, QFontDatabase
-from PySide6.QtCore import QThread, Qt, QTimer, Signal
+from PySide6.QtGui import (
+    QPalette,
+    QColor,
+    QFont,
+    QIcon,
+    QAction,
+    QPixmap,
+    QPainter,
+    QPen,
+    QBrush,
+    QFontMetrics,
+)
+from PySide6.QtCore import QThread, Qt, QTimer, Signal, QEvent
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -20,6 +31,9 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QScrollArea,
     QGraphicsDropShadowEffect,
+    QSystemTrayIcon,
+    QMenu,
+    QStyle,
 )
 
 import matplotlib.pyplot as plt
@@ -349,6 +363,8 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(
             Qt.Window | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
         )
+        self._is_exiting = False
+        self._last_percentage_text = "0%"
 
         # Set window icon and properties
         # Skip icon for now to avoid compatibility issues
@@ -501,6 +517,75 @@ class MainWindow(QMainWindow):
         self.percentage_label.setText("0.0%")
         self.log_message(f"[{timestamp}] Initial percentage set to 0.0%")
 
+        # System tray setup
+        self._setup_tray()
+
+    def _setup_tray(self):
+        """Create system tray icon with context menu and actions."""
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self.log_message("[Tray] System tray not available on this system")
+            return
+
+        # Create initial number icon based on current percentage
+        icon = self._make_percentage_tray_icon(self.percentage_label.text())
+
+        self.tray_icon = QSystemTrayIcon(icon, self)
+        self.tray_icon.setToolTip("Ping Success Monitor")
+
+        tray_menu = QMenu(self)
+        # Readout action (disabled label to show average in menu)
+        self.tray_avg_action = QAction("Avg: 0%", self)
+        self.tray_avg_action.setEnabled(False)
+        tray_menu.addAction(self.tray_avg_action)
+        tray_menu.addSeparator()
+        action_show = QAction("Show Window", self)
+        action_show.triggered.connect(self.show_and_raise)
+        action_hide = QAction("Hide Window", self)
+        action_hide.triggered.connect(self.hide)
+        action_quit = QAction("Quit", self)
+        action_quit.triggered.connect(self.quit_app)
+
+        tray_menu.addAction(action_show)
+        tray_menu.addAction(action_hide)
+        tray_menu.addSeparator()
+        tray_menu.addAction(action_quit)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_activated)
+        self.tray_icon.show()
+
+        # Initialize tray text from current percentage label
+        self._refresh_tray_percentage_text(self.percentage_label.text())
+
+    def _on_tray_activated(self, reason):
+        """Toggle window on tray icon activation (double click)."""
+        if reason == QSystemTrayIcon.ActivationReason.Trigger or reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show_and_raise()
+
+    def show_and_raise(self):
+        """Show the window and bring it to the foreground."""
+        self.show()
+        self.setWindowState((self.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+        self.raise_()
+        self.activateWindow()
+
+    def hide_to_tray(self):
+        """Hide the window and notify via tray balloon message."""
+        self.hide()
+        if hasattr(self, "tray_icon") and self.tray_icon.isVisible():
+            try:
+                self.tray_icon.showMessage(
+                    "Ping Success Monitor",
+                    f"Average: {self._last_percentage_text}\nRunning in the system tray. Right-click for options.",
+                    QSystemTrayIcon.MessageIcon.Information,
+                    3000,
+                )
+            except Exception:
+                pass
+
     def log_message(self, message: str):
         """Log a message to both console output and the console widget"""
         print(message)
@@ -548,6 +633,7 @@ class MainWindow(QMainWindow):
         formatted = self._format_percentage(percentage)
         if self.percentage_label.text() != formatted:
             self.percentage_label.setText(formatted)
+            self._refresh_tray_percentage_text(formatted)
         # self.log_message(f"[{timestamp}] Updated percentage label to {percentage:.1f}%")
 
     def _format_percentage(self, value: float) -> str:
@@ -578,10 +664,98 @@ class MainWindow(QMainWindow):
             # Update matplotlib line
             self.plot_widget.update_line(x_data, y_data)
 
+    def _refresh_tray_percentage_text(self, text: str):
+        """Update tray tooltip and menu label with current average percent."""
+        self._last_percentage_text = text
+        if hasattr(self, "tray_icon") and self.tray_icon is not None:
+            try:
+                self.tray_icon.setToolTip(f"Ping Success Monitor\nAverage: {text}")
+                # Update tray icon graphic with numeric text
+                self.tray_icon.setIcon(self._make_percentage_tray_icon(text))
+            except Exception:
+                pass
+        if hasattr(self, "tray_avg_action") and self.tray_avg_action is not None:
+            self.tray_avg_action.setText(f"Avg: {text}")
+
+    def _make_percentage_tray_icon(self, text: str) -> QIcon:
+        """Render a small icon showing the integer percentage as text."""
+        # Extract integer value and choose background color
+        display_text = text.replace("%", "").split(".")[0]
+        try:
+            value = int(display_text)
+        except Exception:
+            value = 0
+        # Color thresholds: green >=95, yellow >=80, red otherwise
+        if value >= 95:
+            bg_color = QColor("#0f5132")  # dark green
+            fg_color = QColor("#d1e7dd")  # light text
+            border_color = QColor("#198754")
+        elif value >= 80:
+            bg_color = QColor("#664d03")  # dark yellow
+            fg_color = QColor("#fff3cd")
+            border_color = QColor("#ffc107")
+        else:
+            bg_color = QColor("#58151c")  # dark red
+            fg_color = QColor("#f8d7da")
+            border_color = QColor("#dc3545")
+
+        size = 32
+        padding = 2
+        pix = QPixmap(size, size)
+        pix.fill(Qt.transparent)
+
+        painter = QPainter(pix)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        # Background circle
+        brush = QBrush(bg_color)
+        pen = QPen(border_color)
+        pen.setWidth(2)
+        painter.setBrush(brush)
+        painter.setPen(pen)
+        painter.drawEllipse(padding, padding, size - 2 * padding, size - 2 * padding)
+
+        # Text: try to fit width by reducing font size
+        font = QFont(self.font())
+        font.setBold(True)
+        font_size = 14
+        fm: QFontMetrics
+        while font_size >= 8:
+            font.setPointSize(font_size)
+            fm = QFontMetrics(font)
+            if fm.horizontalAdvance(display_text) <= size - 8:
+                break
+            font_size -= 1
+        painter.setFont(font)
+        painter.setPen(QPen(fg_color))
+        painter.drawText(0, 0, size, size, Qt.AlignCenter, display_text)
+
+        painter.end()
+        return QIcon(pix)
+
     def closeEvent(self, event):
+        # Close should fully exit
         for s in self.series:
             s.worker.stop()
         super().closeEvent(event)
+
+    def quit_app(self):
+        """Quit from tray action (ensures workers stopped)."""
+        self._is_exiting = True
+        if hasattr(self, "tray_icon"):
+            try:
+                self.tray_icon.hide()
+            except Exception:
+                pass
+        self.close()
+
+    def changeEvent(self, event):
+        """Minimize should go to tray."""
+        if event.type() == QEvent.Type.WindowStateChange:
+            if self.isMinimized():
+                # Defer hide to avoid animation glitches
+                QTimer.singleShot(0, self.hide_to_tray)
+        super().changeEvent(event)
 
 
 if __name__ == "__main__":
@@ -603,8 +777,7 @@ if __name__ == "__main__":
     palette.setColor(QPalette.Highlight, QColor("#3498db"))
     app.setPalette(palette)
 
-    # Set application-wide font preferring San Francisco if available
-    QFontDatabase.addApplicationFontFromData(b"")  # no-op, placeholder if packaged
+    # Set application-wide font (Qt will fall back to available system fonts)
     font = QFont("SF Pro Text", 10)
     font.setWeight(QFont.Weight.Normal)
     app.setFont(font)
