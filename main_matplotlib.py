@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Deque, List
 
 from pythonping import ping
-from PySide6.QtGui import QPalette, QColor, QFont
+from PySide6.QtGui import QPalette, QColor, QFont, QFontDatabase
 from PySide6.QtCore import QThread, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QTextEdit,
     QScrollArea,
+    QGraphicsDropShadowEffect,
 )
 
 import matplotlib.pyplot as plt
@@ -29,15 +30,24 @@ from matplotlib.figure import Figure
 plt.ioff()
 
 # Configure better fonts for matplotlib
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = ['Segoe UI', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif']
-plt.rcParams['font.size'] = 10
-plt.rcParams['axes.titlesize'] = 12
-plt.rcParams['axes.labelsize'] = 11
-plt.rcParams['xtick.labelsize'] = 9
-plt.rcParams['ytick.labelsize'] = 9
-plt.rcParams['legend.fontsize'] = 10
-plt.rcParams['figure.titlesize'] = 14
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = [
+    "SF Pro Text",
+    "SF Pro Display",
+    "San Francisco",
+    "Segoe UI",
+    "Arial",
+    "DejaVu Sans",
+    "Liberation Sans",
+    "sans-serif",
+]
+plt.rcParams["font.size"] = 10
+plt.rcParams["axes.titlesize"] = 12
+plt.rcParams["axes.labelsize"] = 11
+plt.rcParams["xtick.labelsize"] = 9
+plt.rcParams["ytick.labelsize"] = 9
+plt.rcParams["legend.fontsize"] = 10
+plt.rcParams["figure.titlesize"] = 14
 
 PING_INTERVAL = 1.0  # seconds
 PACKETS_PER_INTERVAL = 5
@@ -63,14 +73,15 @@ class PingWorker(QThread):
                         success_count += 1
                 except Exception:
                     pass  # treat errors as loss
-            
+
             # Send 1 if all pings successful, 0 otherwise
             success = 1 if success_count == PACKETS_PER_INTERVAL else 0
-            
+
             timestamp = datetime.now().strftime("%H:%M:%S")
             status = "SUCCESS" if success else "FAILURE"
             message = f"[{timestamp}] Ping {self.host}: {status}"
-            self.log_message.emit(message)
+            if not success:
+                self.log_message.emit(message)
             self.sample_ready.emit(success)
             self._stop.wait(PING_INTERVAL)
 
@@ -81,25 +92,30 @@ class PingWorker(QThread):
 
 class GradientFrame(QFrame):
     """Custom frame with gradient background"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("gradientFrame")
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QFrame#gradientFrame {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
                 border-radius: 15px;
                 border: 2px solid #4a90e2;
             }
-        """)
+        """
+        )
 
 
 class StatusCard(QFrame):
     """Beautiful status card with gradient and shadow effect"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("statusCard")
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QFrame#statusCard {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 #2c3e50, stop:0.5 #34495e, stop:1 #2c3e50);
@@ -107,16 +123,19 @@ class StatusCard(QFrame):
                 border: 1px solid #3498db;
                 padding: 15px;
             }
-        """)
-        self.setMinimumHeight(80)
+        """
+        )
+        self.setMinimumHeight(140)
 
 
 class ConsoleLogWidget(QFrame):
     """Console log widget with scrolling and message limiting"""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("consoleFrame")
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QFrame#consoleFrame {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
@@ -124,30 +143,34 @@ class ConsoleLogWidget(QFrame):
                 border: 2px solid #3498db;
                 padding: 10px;
             }
-        """)
+        """
+        )
         self.setMinimumHeight(150)
         self.setMaximumHeight(150)
-        
+
         # Layout for the console frame
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
-        
+
         # Console title
         title = QLabel("Console Logs")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             color: #3498db; 
             font-size: 14px; 
             font-weight: 600; 
             font-family: 'Segoe UI', 'Arial', sans-serif;
             margin-bottom: 5px;
-        """)
+        """
+        )
         layout.addWidget(title)
-        
+
         # Text edit for console output
         self.console_text = QTextEdit()
         self.console_text.setReadOnly(True)
-        self.console_text.setStyleSheet("""
+        self.console_text.setStyleSheet(
+            """
             QTextEdit {
                 background-color: #0d1117;
                 color: #c9d1d9;
@@ -171,12 +194,13 @@ class ConsoleLogWidget(QFrame):
             QScrollBar::handle:vertical:hover {
                 background: #6e7681;
             }
-        """)
+        """
+        )
         layout.addWidget(self.console_text)
-        
+
         # Message storage with 100 message limit
         self.messages = deque(maxlen=100)
-        
+
     def add_message(self, message: str):
         """Add a message to the console log"""
         # Format failure messages with red background
@@ -184,13 +208,13 @@ class ConsoleLogWidget(QFrame):
             formatted_message = f'<span style="background-color: #dc3545; color: white; padding: 2px 4px; border-radius: 3px;">{message}</span>'
         else:
             formatted_message = message
-            
+
         self.messages.append(formatted_message)
-        
+
         # Update the display with HTML formatting
         self.console_text.clear()
-        self.console_text.setHtml('<br>'.join(self.messages))
-        
+        self.console_text.setHtml("<br>".join(self.messages))
+
         # Auto-scroll to bottom
         scrollbar = self.console_text.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
@@ -199,51 +223,94 @@ class ConsoleLogWidget(QFrame):
 class MatplotlibWidget(FigureCanvas):
     def __init__(self, parent=None, logger=None):
         # Create figure with modern dark background
-        self.figure = Figure(figsize=(9, 5), facecolor='#1a1a2e')
+        self.figure = Figure(figsize=(9, 5), facecolor="#1a1a2e")
         self.figure.patch.set_visible(False)
         super().__init__(self.figure)
         self.setParent(parent)
         self.logger = logger if logger else print
-        
+
         # Create subplot with proper margins for labels and no frame
-        self.ax = self.figure.add_axes([0.22, 0.15, 0.72, 0.75], facecolor='#1a1a2e')
+        self.ax = self.figure.add_axes([0.22, 0.15, 0.72, 0.75], facecolor="#1a1a2e")
         self.ax.patch.set_visible(False)
         self.ax.set_ylim(0, 100)
         self.ax.set_xlim(0, 15)
-        
+
         # Enhanced styling with modern colors
-        self.ax.grid(True, alpha=0.2, color='#3498db', linestyle='--', linewidth=0.5)
-        self.ax.tick_params(colors='#ecf0f1', labelsize=10, 
-                           top=False, right=False, left=True, bottom=True,
-                           length=0, width=0, pad=8)
-        
+        self.ax.grid(True, alpha=0.2, color="#3498db", linestyle="--", linewidth=0.5)
+        self.ax.tick_params(
+            colors="#ecf0f1",
+            labelsize=10,
+            top=False,
+            right=False,
+            left=True,
+            bottom=True,
+            length=0,
+            width=0,
+            pad=8,
+        )
+
         # Remove borders and spines
         self.ax.set_frame_on(False)
-        for key in ['top', 'right', 'bottom', 'left']:
+        for key in ["top", "right", "bottom", "left"]:
             if key in self.ax.spines:
                 self.ax.spines[key].set_visible(False)
-        
+
         # Enhanced axis labels with better typography
         self.ax.set_xticks([0, 5, 10, 15])
-        self.ax.set_xticklabels(['0m', '5m', '10m', '15m'], color='#ecf0f1', fontsize=10, weight='600', fontfamily='Segoe UI')
+        self.ax.set_xticklabels(
+            ["0m", "5m", "10m", "15m"],
+            color="#ecf0f1",
+            fontsize=10,
+            weight="600",
+            fontfamily="Segoe UI",
+        )
         self.ax.set_yticks([0, 25, 50, 75, 100])
-        self.ax.set_yticklabels(['0%', '25%', '50%', '75%', '100%'], color='#ecf0f1', fontsize=10, weight='600', fontfamily='Segoe UI')
-        
+        self.ax.set_yticklabels(
+            ["0%", "25%", "50%", "75%", "100%"],
+            color="#ecf0f1",
+            fontsize=10,
+            weight="600",
+            fontfamily="Segoe UI",
+        )
+
         # Enhanced axis labels
-        self.ax.set_xlabel('Time (minutes)', color='#3498db', fontsize=12, weight='600', fontfamily='Segoe UI')
-        self.ax.set_ylabel('Success Rate (%)', color='#3498db', fontsize=12, weight='600', fontfamily='Segoe UI')
-        
+        self.ax.set_xlabel(
+            "Time (minutes)",
+            color="#3498db",
+            fontsize=12,
+            weight="600",
+            fontfamily="Segoe UI",
+        )
+        self.ax.set_ylabel(
+            "Success Rate (%)",
+            color="#3498db",
+            fontsize=12,
+            weight="600",
+            fontfamily="Segoe UI",
+        )
+
         # Modern styling for the canvas
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             border: none; 
             background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                 stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
             border-radius: 10px;
-        """)
-        
+        """
+        )
+
         # Initialize line with gradient effect
-        self.line, = self.ax.plot([], [], color='#00ff88', linewidth=1.5, alpha=0.8, solid_joinstyle='round', solid_capstyle='round', antialiased=True)
-        
+        (self.line,) = self.ax.plot(
+            [],
+            [],
+            color="#00ff88",
+            linewidth=1.5,
+            alpha=0.8,
+            solid_joinstyle="round",
+            solid_capstyle="round",
+            antialiased=True,
+        )
+
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.logger(f"[{timestamp}] Matplotlib widget created with modern styling")
 
@@ -255,12 +322,12 @@ class MatplotlibWidget(FigureCanvas):
             # Each data point represents 2 seconds (450 points * 2 seconds = 900 seconds = 15 minutes)
             time_scale = [i * 2.0 / 60.0 for i in x_data]  # Convert to minutes
             self.line.set_data(time_scale, y_data)
-            
+
             # Set x-axis to show 0-15 minutes
             self.ax.set_xlim(0, 15)
         else:
             self.line.set_data([], [])
-        
+
         self.draw()
         timestamp = datetime.now().strftime("%H:%M:%S")
         # Commented out to reduce log noise - uncomment if needed for debugging
@@ -279,7 +346,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Ping Success Monitor")
         self.setFixedSize(700, 700)  # Increased height to accommodate console
-        self.setWindowFlags(Qt.Window | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint)
+        self.setWindowFlags(
+            Qt.Window | Qt.WindowMinimizeButtonHint | Qt.WindowCloseButtonHint
+        )
 
         # Set window icon and properties
         # Skip icon for now to avoid compatibility issues
@@ -304,25 +373,29 @@ class MainWindow(QMainWindow):
         title_layout.setSpacing(5)
 
         title = QLabel("Ping Success Monitor")
-        title.setStyleSheet("""
+        title.setStyleSheet(
+            """
             color: #ecf0f1; 
             font-size: 26px; 
             font-weight: 600; 
-            font-family: 'Segoe UI', 'Arial', sans-serif;
+            font-family: 'SF Pro Display', 'SF Pro Text', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
             text-align: center;
             letter-spacing: 0.5px;
-        """)
+        """
+        )
         title.setAlignment(Qt.AlignCenter)
 
         subtitle = QLabel("Real-time Network Connectivity")
-        subtitle.setStyleSheet("""
+        subtitle.setStyleSheet(
+            """
             color: #3498db; 
             font-size: 15px; 
             font-weight: 400; 
-            font-family: 'Segoe UI', 'Arial', sans-serif;
+            font-family: 'SF Pro Text', 'SF Pro Display', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
             text-align: center;
             letter-spacing: 0.3px;
-        """)
+        """
+        )
         subtitle.setAlignment(Qt.AlignCenter)
 
         title_layout.addWidget(title)
@@ -332,7 +405,8 @@ class MainWindow(QMainWindow):
         # Matplotlib widget in a styled container
         plot_container = QFrame()
         plot_container.setObjectName("plotContainer")
-        plot_container.setStyleSheet("""
+        plot_container.setStyleSheet(
+            """
             QFrame#plotContainer {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
                     stop:0 #1a1a2e, stop:0.5 #16213e, stop:1 #0f3460);
@@ -340,7 +414,8 @@ class MainWindow(QMainWindow):
                 border: 2px solid #3498db;
                 padding: 10px;
             }
-        """)
+        """
+        )
         plot_layout = QVBoxLayout(plot_container)
         plot_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -351,64 +426,57 @@ class MainWindow(QMainWindow):
         # Enhanced status display with modern card design
         status_card = StatusCard()
         status_layout = QVBoxLayout(status_card)
-        status_layout.setContentsMargins(25, 5, 25, 25)
-        status_layout.setSpacing(5)
+        status_layout.setContentsMargins(25, 12, 25, 18)
+        status_layout.setSpacing(10)
 
-        # Success percentage with enhanced styling
-        percentage_container = QFrame()
-        percentage_container.setObjectName("percentageContainer")
-        percentage_container.setStyleSheet("""
-            QFrame#percentageContainer {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #27ae60, stop:0.5 #2ecc71, stop:1 #27ae60);
-                border-radius: 12px;
-                border: 2px solid #00ff88;
-                min-height: 70px;
-                max-width: 300px;
-            }
-        """)
-        percentage_layout = QVBoxLayout(percentage_container)
-        percentage_layout.setContentsMargins(20, 5, 20, 5)
+        # Time frame label with clearer contrast (placed above to avoid overlap)
+        time_label = QLabel("Average in the last 15 minutes")
+        time_label.setStyleSheet(
+            """
+            color: #ecf0f1; 
+            font-size: 16px; 
+            font-weight: 600; 
+            font-family: 'SF Pro Text', 'SF Pro Display', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
+            text-align: center;
+            letter-spacing: 0.3px;
+        """
+        )
+        time_label.setAlignment(Qt.AlignCenter)
+        status_layout.addWidget(time_label, 0, Qt.AlignCenter)
 
-        self.percentage_label = QLabel("0.0%")
+        # Success percentage label (no green rectangle)
+        self.percentage_label = QLabel("100%")
         self.percentage_label.setObjectName("percentageLabel")
-        self.percentage_label.setStyleSheet("""
+        self.percentage_label.setStyleSheet(
+            """
             QLabel#percentageLabel {
-                color: white; 
-                font-size: 24px; 
-                font-weight: 600; 
-                font-family: 'Segoe UI', 'Arial', sans-serif;
+                color: #eafaf1; 
+                font-size: 40px; 
+                font-weight: 700; 
+                font-family: 'SF Pro Display', 'SF Pro Text', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
                 text-align: center;
-                letter-spacing: 1px;
+                letter-spacing: 0.5px;
                 background-color: transparent;
             }
-        """)
+        """
+        )
         self.percentage_label.setAlignment(Qt.AlignCenter)
-        self.percentage_label.setMinimumHeight(50)
-        percentage_layout.addWidget(self.percentage_label)
-        
-        # Center the percentage container within the status card
-        status_layout.addWidget(percentage_container, 0, Qt.AlignCenter)
-        
-        # Time frame label with enhanced styling
-        time_label = QLabel("Last 15 Minutes")
-        time_label.setStyleSheet("""
-            color: #bdc3c7; 
-            font-size: 15px; 
-            font-weight: 400; 
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            text-align: center;
-            letter-spacing: 0.2px;
-        """)
-        time_label.setAlignment(Qt.AlignCenter)
-        status_layout.addWidget(time_label)
+        self.percentage_label.setMinimumHeight(56)
+        self.percentage_label.setMinimumWidth(220)
+        # Soft glow for readability
+        glow = QGraphicsDropShadowEffect()
+        glow.setBlurRadius(22)
+        glow.setColor(QColor("#0b3d2e"))
+        glow.setOffset(0, 2)
+        self.percentage_label.setGraphicsEffect(glow)
+        status_layout.addWidget(self.percentage_label, 0, Qt.AlignCenter)
 
         main_layout.addWidget(status_card)
 
         # Console log widget
         self.console_widget = ConsoleLogWidget()
         main_layout.addWidget(self.console_widget)
-        
+
         layout.addWidget(main_frame)
 
         # Internal storage
@@ -428,7 +496,7 @@ class MainWindow(QMainWindow):
         self.log_message(f"[{timestamp}] Ping Success Monitor started")
         self.log_message(f"[{timestamp}] Monitoring interval: {PING_INTERVAL}s")
         self.log_message(f"[{timestamp}] Console logs limited to 100 messages")
-        
+
         # Set initial percentage
         self.percentage_label.setText("0.0%")
         self.log_message(f"[{timestamp}] Initial percentage set to 0.0%")
@@ -436,14 +504,14 @@ class MainWindow(QMainWindow):
     def log_message(self, message: str):
         """Log a message to both console output and the console widget"""
         print(message)
-        if hasattr(self, 'console_widget'):
+        if hasattr(self, "console_widget"):
             self.console_widget.add_message(message)
 
     @staticmethod
     def _default_hosts() -> List[str]:
         """Return the fixed list of hosts we monitor."""
         return [
-            "8.8.8.8",        # Google DNS
+            "8.8.8.8",  # Google DNS
         ]
 
     def _add_series(self, host: str):
@@ -453,7 +521,9 @@ class MainWindow(QMainWindow):
         worker = PingWorker(host)
         # Use a more reliable signal connection
         worker.sample_ready.connect(lambda success: self._on_sample(history, success))
-        worker.log_message.connect(self.log_message)  # Connect the signal to the main window's log_message method
+        worker.log_message.connect(
+            self.log_message
+        )  # Connect the signal to the main window's log_message method
         worker.start()
 
         self.series.append(TargetSeries(host, history, worker))
@@ -462,41 +532,49 @@ class MainWindow(QMainWindow):
 
     def _on_sample(self, history: Deque[int], success: int):
         history.append(success)
-        
+
         # Calculate percentage: successful pings / total samples collected
         if len(history) > 0:
             successful_pings = sum(history)
             percentage = (successful_pings / len(history)) * 100.0
         else:
             percentage = 0.0
-        
+
         # Debug logging
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_message(f"[{timestamp}] Sample received: success={success}, history_size={len(history)}, percentage={percentage:.1f}%")
-            
-        # Update the percentage label and force a repaint
-        self.percentage_label.setText(f"{percentage:.1f}%")
-        self.percentage_label.repaint()
-        self.log_message(f"[{timestamp}] Updated percentage label to {percentage:.1f}%")
+        # timestamp = datetime.now().strftime("%H:%M:%S")
+        # self.log_message(f"[{timestamp}] Sample received: success={success}, history_size={len(history)}, percentage={percentage:.1f}%")
+
+        # Update the percentage label (formatted and without forced repaint to avoid flicker)
+        formatted = self._format_percentage(percentage)
+        if self.percentage_label.text() != formatted:
+            self.percentage_label.setText(formatted)
+        # self.log_message(f"[{timestamp}] Updated percentage label to {percentage:.1f}%")
+
+    def _format_percentage(self, value: float) -> str:
+        """Format percentage nicely: one decimal, but strip trailing .0."""
+        text = f"{value:.1f}".rstrip("0").rstrip(".")
+        return f"{text}%"
 
     def _replot(self):
         for s in self.series:
             if len(s.history) == 0:
                 return
-                
+
             # Create line data based on rolling window success rate
             y_data = []
             for i in range(len(s.history)):
-                window_size = min(HISTORY_SECONDS, i + 1)  # Use 15-minute rolling window
+                window_size = min(
+                    HISTORY_SECONDS, i + 1
+                )  # Use 15-minute rolling window
                 start_idx = max(0, i - window_size + 1)
-                window_data = list(s.history)[start_idx:i+1]
+                window_data = list(s.history)[start_idx : i + 1]
                 successful_in_window = sum(window_data)
                 percentage = (successful_in_window / window_size) * 100.0
-                
+
                 y_data.append(percentage)
-            
+
             x_data = list(range(len(y_data)))
-            
+
             # Update matplotlib line
             self.plot_widget.update_line(x_data, y_data)
 
@@ -525,11 +603,12 @@ if __name__ == "__main__":
     palette.setColor(QPalette.Highlight, QColor("#3498db"))
     app.setPalette(palette)
 
-    # Set application-wide font with better typography
-    font = QFont("Segoe UI", 10)
+    # Set application-wide font preferring San Francisco if available
+    QFontDatabase.addApplicationFontFromData(b"")  # no-op, placeholder if packaged
+    font = QFont("SF Pro Text", 10)
     font.setWeight(QFont.Weight.Normal)
     app.setFont(font)
 
     win = MainWindow()
     win.show()
-    sys.exit(app.exec()) 
+    sys.exit(app.exec())
