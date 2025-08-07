@@ -63,6 +63,13 @@ Tray behavior:
 - The tray tooltip and menu show the current average percentage.
 - Right‑click the tray icon for Show/Hide/Quit; double‑click toggles visibility.
 
+## Tray icon
+<figure>
+  <img src="screen-06.png" alt="System Tray Icon showing average percentage" width="140"/>
+  <figcaption><em>Easily watchdog your internet quality.</em></figcaption>
+  
+</figure>
+
 ## Project Structure
 
 ```text
