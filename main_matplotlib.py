@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import threading
 from collections import deque
@@ -65,6 +66,12 @@ plt.rcParams["figure.titlesize"] = 14
 PING_INTERVAL = 1.0  # seconds
 PACKETS_PER_INTERVAL = 5
 HISTORY_SECONDS = 450  # 15-minute rolling window (450 seconds = 7.5 minutes, but we'll scale to 15 minutes)
+
+
+def resource_path(relative_path: str) -> str:
+    """Return absolute path to resource, works for dev and for PyInstaller bundles."""
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 
 class PingWorker(QThread):
@@ -242,8 +249,16 @@ class MatplotlibWidget(FigureCanvas):
         self.setParent(parent)
         self.logger = logger if logger else print
 
-        # Create subplot with proper margins for labels and no frame
-        self.ax = self.figure.add_axes([0.22, 0.15, 0.72, 0.75], facecolor="#1a1a2e")
+        # Create subplot with symmetric margins so the graph is centered
+        left_right_margin = 0.12
+        bottom_margin = 0.15
+        top_margin = 0.12
+        axes_width = 1.0 - 2 * left_right_margin
+        axes_height = 1.0 - bottom_margin - top_margin
+        self.ax = self.figure.add_axes(
+            [left_right_margin, bottom_margin, axes_width, axes_height],
+            facecolor="#1a1a2e",
+        )
         self.ax.patch.set_visible(False)
         self.ax.set_ylim(0, 100)
         self.ax.set_xlim(0, 15)
@@ -389,8 +404,11 @@ class MainWindow(QMainWindow):
         self._last_percentage_text = "0%"
 
         # Set window icon and properties
-        # Skip icon for now to avoid compatibility issues
-        pass
+        try:
+            app_icon = QIcon(resource_path("icon.png"))
+            self.setWindowIcon(app_icon)
+        except Exception:
+            pass
 
         central = QWidget(self)
         self.setCentralWidget(central)
@@ -739,6 +757,12 @@ if __name__ == "__main__":
     font = QFont("SF Pro Text", 10)
     font.setWeight(QFont.Weight.Normal)
     app.setFont(font)
+
+    # Application icon (taskbar/alt-tab)
+    try:
+        app.setWindowIcon(QIcon(resource_path("icon.png")))
+    except Exception:
+        pass
 
     win = MainWindow()
     win.show()
