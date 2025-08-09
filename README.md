@@ -94,7 +94,6 @@ ping-success/
 
 - Multiple targets with per‑host lines
 - Export logs/metrics
-- System tray mode
 - Packaged `.exe` via PyInstaller
 
 ---
