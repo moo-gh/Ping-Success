@@ -244,6 +244,8 @@ class MatplotlibWidget(FigureCanvas):
     def __init__(self, parent=None, logger=None):
         # Create figure with modern dark background
         self.figure = Figure(figsize=(9, 5), facecolor="#1a1a2e")
+        # Slightly higher DPI for crisper, more consistent line rendering
+        self.figure.set_dpi(120)
         self.figure.patch.set_visible(False)
         super().__init__(self.figure)
         self.setParent(parent)
@@ -288,7 +290,7 @@ class MatplotlibWidget(FigureCanvas):
         self.ax.set_xticklabels(
             ["0m", "5m", "10m", "15m"],
             color="#ecf0f1",
-            fontsize=10,
+            fontsize=8,
             weight="600",
             fontfamily="Segoe UI",
         )
@@ -296,7 +298,7 @@ class MatplotlibWidget(FigureCanvas):
         self.ax.set_yticklabels(
             ["0%", "25%", "50%", "75%", "100%"],
             color="#ecf0f1",
-            fontsize=10,
+            fontsize=8,
             weight="600",
             fontfamily="Segoe UI",
         )
@@ -305,14 +307,14 @@ class MatplotlibWidget(FigureCanvas):
         self.ax.set_xlabel(
             "Time (minutes)",
             color="#3498db",
-            fontsize=10,
+            fontsize=8,
             weight="600",
             fontfamily="Segoe UI",
         )
         self.ax.set_ylabel(
             "Success Rate (%)",
             color="#3498db",
-            fontsize=10,
+            fontsize=8,
             weight="600",
             fontfamily="Segoe UI",
         )
@@ -332,10 +334,10 @@ class MatplotlibWidget(FigureCanvas):
             [],
             [],
             color="#00ff88",
-            linewidth=1.5,
-            alpha=0.8,
-            solid_joinstyle="round",
-            solid_capstyle="round",
+            linewidth=1.6,
+            alpha=1.0,
+            solid_joinstyle="miter",
+            solid_capstyle="butt",
             antialiased=True,
         )
 
