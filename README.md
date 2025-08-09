@@ -8,7 +8,7 @@
 
 Real‑time desktop app for visualizing network connectivity by plotting ping success over time.
 
-<img src="screen-05.png" alt="Application Screenshot" width="600"/>
+<img src="screen-07.png" alt="Application Screenshot" width="600"/>
 
 <p>
   <img src="screen-06.png" alt="System tray icon showing average percentage"/>
