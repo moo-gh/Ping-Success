@@ -30,7 +30,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QTextEdit,
     QScrollArea,
-    QGraphicsDropShadowEffect,
     QSystemTrayIcon,
     QMenu,
     QStyle,
@@ -291,14 +290,14 @@ class MatplotlibWidget(FigureCanvas):
         self.ax.set_xlabel(
             "Time (minutes)",
             color="#3498db",
-            fontsize=12,
+            fontsize=10,
             weight="600",
             fontfamily="Segoe UI",
         )
         self.ax.set_ylabel(
             "Success Rate (%)",
             color="#3498db",
-            fontsize=12,
+            fontsize=10,
             weight="600",
             fontfamily="Segoe UI",
         )
@@ -325,6 +324,23 @@ class MatplotlibWidget(FigureCanvas):
             antialiased=True,
         )
 
+        # Overlay average text positioned just above the graph area
+        axes_box = self.ax.get_position()  # in figure coordinates
+        center_x = axes_box.x0 + (axes_box.width / 2.0)
+        top_y = min(0.99, axes_box.y1 + 0.02)  # small margin above the axes
+        self.avg_text = self.figure.text(
+            center_x,
+            top_y,
+            "",
+            transform=self.figure.transFigure,
+            ha="center",
+            va="bottom",
+            color="#eafaf1",
+            fontsize=10,
+            weight="700",
+            fontfamily="Segoe UI",
+        )
+
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.logger(f"[{timestamp}] Matplotlib widget created with modern styling")
 
@@ -346,6 +362,12 @@ class MatplotlibWidget(FigureCanvas):
         timestamp = datetime.now().strftime("%H:%M:%S")
         # Commented out to reduce log noise - uncomment if needed for debugging
         # self.logger(f"[{timestamp}] Matplotlib line updated with {len(x_data)} points")
+
+    def set_average_text(self, text: str):
+        """Update the overlay average percentage text on the graph."""
+        if hasattr(self, "avg_text"):
+            self.avg_text.set_text(f"Average: {text}")
+            self.draw_idle()
 
 
 @dataclass
@@ -382,26 +404,13 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(25, 25, 25, 25)
         main_layout.setSpacing(20)
 
-        # Enhanced title with modern typography
+        # Enhanced title area (subtitle only)
         title_frame = QFrame()
         title_layout = QVBoxLayout(title_frame)
         title_layout.setContentsMargins(0, 0, 0, 0)
         title_layout.setSpacing(5)
 
-        title = QLabel("Ping Success Monitor")
-        title.setStyleSheet(
-            """
-            color: #ecf0f1; 
-            font-size: 26px; 
-            font-weight: 600; 
-            font-family: 'SF Pro Display', 'SF Pro Text', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
-            text-align: center;
-            letter-spacing: 0.5px;
-        """
-        )
-        title.setAlignment(Qt.AlignCenter)
-
-        subtitle = QLabel("Real-time Network Connectivity")
+        subtitle = QLabel("Real-time Network Connectivity Monitor")
         subtitle.setStyleSheet(
             """
             color: #3498db; 
@@ -414,7 +423,6 @@ class MainWindow(QMainWindow):
         )
         subtitle.setAlignment(Qt.AlignCenter)
 
-        title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         main_layout.addWidget(title_frame)
 
@@ -438,56 +446,6 @@ class MainWindow(QMainWindow):
         self.plot_widget = MatplotlibWidget(logger=self.log_message)
         plot_layout.addWidget(self.plot_widget)
         main_layout.addWidget(plot_container)
-
-        # Enhanced status display with modern card design
-        status_card = StatusCard()
-        status_layout = QVBoxLayout(status_card)
-        status_layout.setContentsMargins(25, 12, 25, 18)
-        status_layout.setSpacing(10)
-
-        # Time frame label with clearer contrast (placed above to avoid overlap)
-        time_label = QLabel("Average in the last 15 minutes")
-        time_label.setStyleSheet(
-            """
-            color: #ecf0f1; 
-            font-size: 16px; 
-            font-weight: 600; 
-            font-family: 'SF Pro Text', 'SF Pro Display', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
-            text-align: center;
-            letter-spacing: 0.3px;
-        """
-        )
-        time_label.setAlignment(Qt.AlignCenter)
-        status_layout.addWidget(time_label, 0, Qt.AlignCenter)
-
-        # Success percentage label (no green rectangle)
-        self.percentage_label = QLabel("100%")
-        self.percentage_label.setObjectName("percentageLabel")
-        self.percentage_label.setStyleSheet(
-            """
-            QLabel#percentageLabel {
-                color: #eafaf1; 
-                font-size: 40px; 
-                font-weight: 700; 
-                font-family: 'SF Pro Display', 'SF Pro Text', 'San Francisco', 'Inter', 'Poppins', 'Montserrat', 'Segoe UI Variable', 'Segoe UI', 'Arial', sans-serif;
-                text-align: center;
-                letter-spacing: 0.5px;
-                background-color: transparent;
-            }
-        """
-        )
-        self.percentage_label.setAlignment(Qt.AlignCenter)
-        self.percentage_label.setMinimumHeight(56)
-        self.percentage_label.setMinimumWidth(220)
-        # Soft glow for readability
-        glow = QGraphicsDropShadowEffect()
-        glow.setBlurRadius(22)
-        glow.setColor(QColor("#0b3d2e"))
-        glow.setOffset(0, 2)
-        self.percentage_label.setGraphicsEffect(glow)
-        status_layout.addWidget(self.percentage_label, 0, Qt.AlignCenter)
-
-        main_layout.addWidget(status_card)
 
         # Console log widget
         self.console_widget = ConsoleLogWidget()
@@ -513,9 +471,9 @@ class MainWindow(QMainWindow):
         self.log_message(f"[{timestamp}] Monitoring interval: {PING_INTERVAL}s")
         self.log_message(f"[{timestamp}] Console logs limited to 100 messages")
 
-        # Set initial percentage
-        self.percentage_label.setText("0.0%")
-        self.log_message(f"[{timestamp}] Initial percentage set to 0.0%")
+        # Set initial overlay percentage on the plot
+        self._last_percentage_text = "0%"
+        self.plot_widget.set_average_text(self._last_percentage_text)
 
         # System tray setup
         self._setup_tray()
@@ -527,7 +485,7 @@ class MainWindow(QMainWindow):
             return
 
         # Create initial number icon based on current percentage
-        icon = self._make_percentage_tray_icon(self.percentage_label.text())
+        icon = self._make_percentage_tray_icon(self._last_percentage_text)
 
         self.tray_icon = QSystemTrayIcon(icon, self)
         self.tray_icon.setToolTip("Ping Success Monitor")
@@ -554,8 +512,8 @@ class MainWindow(QMainWindow):
         self.tray_icon.activated.connect(self._on_tray_activated)
         self.tray_icon.show()
 
-        # Initialize tray text from current percentage label
-        self._refresh_tray_percentage_text(self.percentage_label.text())
+        # Initialize tray text from current percentage
+        self._refresh_tray_percentage_text(self._last_percentage_text)
 
     def _on_tray_activated(self, reason):
         """Toggle window on tray icon activation (double click)."""
@@ -629,10 +587,10 @@ class MainWindow(QMainWindow):
         # timestamp = datetime.now().strftime("%H:%M:%S")
         # self.log_message(f"[{timestamp}] Sample received: success={success}, history_size={len(history)}, percentage={percentage:.1f}%")
 
-        # Update the percentage label (formatted and without forced repaint to avoid flicker)
+        # Update the overlay text on the plot and tray percentage
         formatted = self._format_percentage(percentage)
-        if self.percentage_label.text() != formatted:
-            self.percentage_label.setText(formatted)
+        if self._last_percentage_text != formatted:
+            self.plot_widget.set_average_text(formatted)
             self._refresh_tray_percentage_text(formatted)
         # self.log_message(f"[{timestamp}] Updated percentage label to {percentage:.1f}%")
 
