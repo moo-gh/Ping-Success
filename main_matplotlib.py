@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Deque, List
 
+import requests
 from pythonping import ping
 from PySide6.QtGui import (
     QPalette,
@@ -395,6 +396,9 @@ class TargetSeries:
 
 
 class MainWindow(QMainWindow):
+    # Signal for thread-safe IP updates
+    ip_updated = Signal(str)
+    
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Ping Success Monitor")
@@ -404,6 +408,10 @@ class MainWindow(QMainWindow):
         )
         self._is_exiting = False
         self._last_percentage_text = "0%"
+        self._public_ip = "Fetching..."
+        
+        # Connect the IP update signal
+        self.ip_updated.connect(self._on_ip_updated)
 
         # Set window icon and properties
         try:
@@ -484,6 +492,14 @@ class MainWindow(QMainWindow):
         self.redraw_timer = QTimer(self)
         self.redraw_timer.timeout.connect(self._replot)
         self.redraw_timer.start(int(PING_INTERVAL * 1000))
+
+        # Public IP refresh timer (every 5 minutes)
+        self.ip_timer = QTimer(self)
+        self.ip_timer.timeout.connect(self._fetch_public_ip)
+        self.ip_timer.start(300000)  # 300000 ms = 5 minutes
+
+        # Fetch IP immediately on startup (in background)
+        QTimer.singleShot(1000, self._fetch_public_ip)
 
         # Initial console message
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -642,12 +658,56 @@ class MainWindow(QMainWindow):
             # Update matplotlib line
             self.plot_widget.update_line(x_data, y_data)
 
+    def _fetch_public_ip(self):
+        """Fetch public IP address from echoip.ir or fallback services."""
+        def fetch_in_thread():
+            services = [
+                "https://echoip.ir",
+                "https://api.ipify.org",
+                "https://icanhazip.com",
+                "https://ifconfig.me/ip"
+            ]
+            
+            for service in services:
+                try:
+                    response = requests.get(service, timeout=3)
+                    if response.status_code == 200:
+                        ip = response.text.strip()
+                        # Emit signal to update UI in main thread
+                        self.ip_updated.emit(ip)
+                        return
+                except Exception:
+                    continue
+            
+            # If all services fail
+            self.ip_updated.emit("N/A")
+        
+        # Run in a separate thread to avoid blocking the UI
+        thread = threading.Thread(target=fetch_in_thread, daemon=True)
+        thread.start()
+
+    def _on_ip_updated(self, ip: str):
+        """Handle IP update in the main thread (slot for ip_updated signal)."""
+        self._public_ip = ip
+        self._update_tray_tooltip()
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        self.log_message(f"[{timestamp}] Public IP updated: {ip}")
+
+    def _update_tray_tooltip(self):
+        """Update the tray tooltip with current data."""
+        if hasattr(self, "tray_icon") and self.tray_icon is not None:
+            try:
+                tooltip = f"Ping Success Monitor\nAverage: {self._last_percentage_text}\nPublic IP: {self._public_ip}"
+                self.tray_icon.setToolTip(tooltip)
+            except Exception:
+                pass
+
     def _refresh_tray_percentage_text(self, text: str):
         """Update tray tooltip and menu label with current average percent."""
         self._last_percentage_text = text
         if hasattr(self, "tray_icon") and self.tray_icon is not None:
             try:
-                self.tray_icon.setToolTip(f"Ping Success Monitor\nAverage: {text}")
+                self._update_tray_tooltip()
                 # Update tray icon graphic with numeric text
                 self.tray_icon.setIcon(self._make_percentage_tray_icon(text))
             except Exception:
