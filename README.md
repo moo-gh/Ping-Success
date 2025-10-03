@@ -16,6 +16,12 @@ Real‑time desktop app for visualizing network connectivity by plotting ping su
 </p>
 <p><em>Easily watchdog your internet quality in system tray.</em></p>
 
+<p>
+  <img src="screen-09.png" alt="Tooltip on the system tray icon"/>
+  
+</p>
+<p><em>Easily check your public IP.</em></p>
+
 
 </div>
 
