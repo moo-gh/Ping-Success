@@ -571,11 +571,21 @@ class MainWindow(QMainWindow):
         self.hide()
         if hasattr(self, "tray_icon") and self.tray_icon.isVisible():
             try:
+                # For the minimize notification, always show 100% in green
+                temp_text = "100%"
+                self.tray_icon.setIcon(self._make_percentage_tray_icon(temp_text))
                 self.tray_icon.showMessage(
                     "Ping Success Monitor",
-                    f"Average: {self._last_percentage_text}\nRunning in the system tray. Right-click for options.",
+                    f"Average: {temp_text}\nRunning in the system tray. Right-click for options.",
                     QSystemTrayIcon.MessageIcon.Information,
                     3000,
+                )
+                # Restore the real icon shortly after the toast duration
+                QTimer.singleShot(
+                    3100,
+                    lambda: self.tray_icon.setIcon(
+                        self._make_percentage_tray_icon(self._last_percentage_text)
+                    ),
                 )
             except Exception:
                 pass
