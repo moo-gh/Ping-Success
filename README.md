@@ -16,6 +16,12 @@ Real‑time desktop app for visualizing network connectivity by plotting ping su
 </p>
 <p><em>Easily watchdog your internet quality in system tray.</em></p>
 
+<p>
+  <img src="screen-09.png" alt="Tooltip on the system tray icon"/>
+  
+</p>
+<p><em>Easily check your public IP.</em></p>
+
 
 </div>
 
@@ -26,6 +32,7 @@ Real‑time desktop app for visualizing network connectivity by plotting ping su
 - **Live success rate**: Samples connectivity every second and shows a rolling success percentage.
 - **Beautiful dark UI**: Modern gradients, readable typography, and a clean chart.
 - **Compact console log**: See timestamped ping failures at a glance.
+- **Public IP display**: Automatically fetches and displays your public IP address in the system tray tooltip, refreshed every 5 minutes.
 - **System tray**: Minimize to tray with Show/Hide/Quit actions.
 - **Lightweight**: Single Python script; easy to run on Windows.
 
@@ -54,6 +61,7 @@ python main_matplotlib.py
   - Matplotlib
   - pythonping
   - SciPy
+  - requests
 
 ## Usage
 
@@ -67,8 +75,10 @@ To change the target host, edit the `_default_hosts()` method in `main_matplotli
 Tray behavior:
 - Minimize sends the app to the system tray.
 - Close exits the app.
-- The tray tooltip and menu show the current average percentage.
+- The tray tooltip shows the current average percentage and your public IP address.
+- The tray icon displays the current success rate percentage.
 - Right‑click the tray icon for Show/Hide/Quit; double‑click toggles visibility.
+- Public IP is fetched on startup and refreshed every 5 minutes using multiple fallback services (echoip.ir, api.ipify.org, icanhazip.com, ifconfig.me/ip).
 
 ## Project Structure
 
