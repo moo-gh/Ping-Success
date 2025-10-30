@@ -11,7 +11,7 @@ if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
 echo Building executable...
-python -m PyInstaller --clean --noconfirm build_exe.spec
+python -m PyInstaller --clean --noconfirm PingSuccess.spec
 
 if %errorlevel% equ 0 (
     echo.
